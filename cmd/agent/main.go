@@ -5,6 +5,7 @@ import (
 	"hawkeye/collector/agents"
 	"hawkeye/collector/aggregator"
 	"hawkeye/config"
+	"hawkeye/notifiers"
 	"log"
 	"os"
 	"os/signal"
@@ -20,7 +21,8 @@ func RunMetricMonitor() {
 
 	monitors := aggregator.ReadMonitoringConfig(cfg.MonitorConfigFile, cfg.ServiceName)
 
-	go agents.Start(ctx, cfg, monitors...)
+	agent := agents.NewRedisMonitoringAgent(cfg, notifiers.MockMailingService{})
+	go agent.Start(ctx, monitors...)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)

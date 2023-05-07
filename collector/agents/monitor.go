@@ -19,21 +19,25 @@ import (
 // this will take a list of Monitor and depending on metric type, it will start
 // <MetricType>Monitor. Example: CounterMonitor
 
-type AgentConfig struct {
-	Repo quiver.Repository
+type MonitoringAgent struct {
+	cfg    config.AppConfig
+	mailer notifiers.MailingService
+	repo   quiver.Repository
 }
 
-func Start(ctx context.Context, cfg config.AppConfig, monitors ...aggregator.Monitor) {
+func NewRedisMonitoringAgent(cfg config.AppConfig, mailer notifiers.MailingService) MonitoringAgent {
 	repo := quiver.NewRedisRepo(database.NewRedisClient(cfg.RedisHost))
-	deps := AgentConfig{Repo: repo}
+	return MonitoringAgent{mailer: mailer, cfg: cfg, repo: repo}
+}
 
+func (ma MonitoringAgent) Start(ctx context.Context, monitors ...aggregator.Monitor) {
 	dones := []chan error{}
 
 	for _, monitor := range monitors {
 		if protocols.Is(monitor.Type, protocols.MetricTypeCounter) {
 			log.Println("setting up metric counter monitor for ", monitor.Metric)
 
-			done, err := MonitorCounter(ctx, cfg, deps, monitor)
+			done, err := ma.MonitorCounter(ctx, monitor)
 			if err != nil {
 				log.Println("could not start monitoring counters")
 				continue
@@ -54,7 +58,8 @@ const DefaultIntervalInSeconds time.Duration = 60
 
 var ErrMonitoringStopped = errors.New("monitoring_stopped")
 
-func MonitorCounter(ctx context.Context, cfg config.AppConfig, deps AgentConfig, monitor aggregator.Monitor) (chan error, error) {
+func (ma MonitoringAgent) MonitorCounter(ctx context.Context, monitor aggregator.Monitor) (chan error, error) {
+	cfg := ma.cfg
 
 	if len(monitor.Triggers) == 0 {
 		return nil, errors.New("no_triggers_registered")
@@ -76,14 +81,13 @@ func MonitorCounter(ctx context.Context, cfg config.AppConfig, deps AgentConfig,
 
 	for _, trigger := range monitor.Triggers {
 		go func(t aggregator.Trigger) {
-			mailer := notifiers.MockMailingService{}
 			notifierCfg := notifiers.NotifierConfig{
 				ServiceName: cfg.ServiceName,
 				Environment: cfg.Environment,
 			}
 
 			notifier := notifiers.NewEmailNotifier(
-				mailer,
+				ma.mailer,
 				t,
 				notifierCfg,
 			)
@@ -92,7 +96,7 @@ func MonitorCounter(ctx context.Context, cfg config.AppConfig, deps AgentConfig,
 				monitors.WithThreshold(t.Threshold),
 				monitors.WithInterval(interval),
 				monitors.WithNotifier(notifier),
-				monitors.WithAggregateFunc(aggregator.NewCountAggregator(deps.Repo)),
+				monitors.WithAggregateFunc(aggregator.NewCountAggregator(ma.repo)),
 			}
 
 			cm := monitors.NewCounterMonitor(

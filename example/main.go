@@ -7,6 +7,7 @@ import (
 	"hawkeye/collector/raider"
 	"hawkeye/config"
 	"hawkeye/instruments"
+	"hawkeye/notifiers"
 	"log"
 	"net/http"
 	"os"
@@ -44,7 +45,8 @@ func StartMonitor(cfg config.AppConfig, done chan struct{}) {
 
 	monitors := aggregator.ReadMonitoringConfig(cfg.MonitorConfigFile, cfg.ServiceName)
 
-	go agents.Start(ctx, cfg, monitors...)
+	agent := agents.NewRedisMonitoringAgent(cfg, notifiers.MockMailingService{})
+	go agent.Start(ctx, monitors...)
 
 	for {
 		select {

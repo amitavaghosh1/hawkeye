@@ -63,6 +63,34 @@ the metric asynchronously
 But we can definitely have a buffered channel and consume in batches.
 
 
+### Example API integration
+
+You can also embed both of them in application code. Please see, `example/main.go`.
+
+An example has been provided using `gin`. To test the notifications for threshold breach. You need a benchmarking tool.
+
+- Run the server with `task run.example`
+- Using apache benchmark run `ab -n 10 -c 1 http://localhost:8080/400`
+- In your logs you will be able to see an email
+
+You can pass your own `MailingService` implementation. The interface is:
+
+```
+type MailingService interface {
+	Send(ctx context.Context, cfg MailerConfig) error
+}
+
+type MailerConfig struct {
+	Subject    string
+	Body       string
+	Recipients []string
+	Sender     string
+	CC         []string
+	Bcc        []string
+}
+`
+
+
 ### Caveats:
 
 In monitor config (`monitors.yaml`) each trigger, there is a separate list of recipients, this was built to notify users at different error levels.
@@ -73,4 +101,5 @@ But, this does create the possibility of too many go routines. This can be chang
 it loops through each trigger and then check the threshold. But each `trigger` will have its own notification medium.
 
 This requires a new config modification. We will solve this with `version: 2` in config file, if required.
+
 

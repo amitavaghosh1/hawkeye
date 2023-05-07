@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  run.server:
+    cmds:
+      - go run -race cmd/client/main.go
+  run.agent:
+    cmds:
+      - go run -race cmd/agent/main.go
+  run.cmd:
+    cmds:
+      - go run -race cmd/cli/main.go
+  run.example:
+    cmds:
+      - go run -race example/main.go

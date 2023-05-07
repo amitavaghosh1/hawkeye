@@ -1,0 +1,35 @@
+version: 1
+monitors:
+  - metric: http.response.400
+    type: c
+    interval: 20
+    notifier: email
+    subject: 4xx errors exceeded
+    triggers:
+      - threshold: 3
+        run_every: 5
+        text: "Threshold breached for first degree sla. {{ .count }}"
+        to:
+          - amitava.ghosh@sequoia.com
+      - threshold: 20
+        run_every: 10
+        text: "Threshold breached for second degree sla. {{ .count }}"
+        to:
+          - amitava.ghosh+1@sequoia.com
+
+  - metric: http.response.500
+    type: c
+    interval: 60
+    notifier: email
+    triggers:
+      - threshold: 2
+        run_every: 5
+        text: "Threshold breached for first degree sla."
+        to:
+          - amitava.ghosh@sequoia.com
+      - threshold: 3
+        run_every: 10
+        text: "Threshold breached for second degree sla"
+        to:
+          - amitava.ghosh+1@sequoia.com
+
